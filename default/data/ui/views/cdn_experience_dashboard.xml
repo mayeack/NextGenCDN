@@ -1,0 +1,261 @@
+<dashboard version="1.1">
+  <label>Digital Experience Dashboard</label>
+  <description>Monitor real user performance: page load times, API latency, video buffering, and CDN POP effectiveness by geography.</description>
+
+  <fieldset submitButton="false">
+    <input type="time" token="time_range" searchWhenChanged="true">
+      <label>Time Range</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="country_filter" searchWhenChanged="true">
+      <label>Country</label>
+      <choice value="*">All Countries</choice>
+      <default>*</default>
+      <search>
+        <query>index=cdn sourcetype=cdn:user:experience | stats count by country | sort -count</query>
+        <earliest>$time_range.earliest$</earliest>
+        <latest>$time_range.latest$</latest>
+      </search>
+      <fieldForLabel>country</fieldForLabel>
+      <fieldForValue>country</fieldForValue>
+    </input>
+  </fieldset>
+
+  <!-- Row 1: KPI Summary -->
+  <row>
+    <panel>
+      <title>Avg Page Load Time</title>
+      <single>
+        <search>
+          <query>index=cdn sourcetype=cdn:user:experience country=$country_filter$
+| stats avg(page_load_ms) as avg_pl
+| eval avg_pl=round(avg_pl, 0)</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="field">avg_pl</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[1500,3000]</option>
+        <option name="underLabel">ms</option>
+        <option name="unit">ms</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Avg API Latency</title>
+      <single>
+        <search>
+          <query>index=cdn sourcetype=cdn:user:experience country=$country_filter$
+| stats avg(api_latency_ms) as avg_api
+| eval avg_api=round(avg_api, 0)</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="field">avg_api</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[100,250]</option>
+        <option name="underLabel">ms</option>
+        <option name="unit">ms</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Total Buffering Events</title>
+      <single>
+        <search>
+          <query>index=cdn sourcetype=cdn:user:experience country=$country_filter$
+| stats sum(video_buffer_events) as total_buffers</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[500,2000]</option>
+        <option name="underLabel">Buffer Events</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>P95 Page Load Time</title>
+      <single>
+        <search>
+          <query>index=cdn sourcetype=cdn:user:experience country=$country_filter$
+| stats perc95(page_load_ms) as p95_pl
+| eval p95_pl=round(p95_pl, 0)</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="field">p95_pl</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[2500,5000]</option>
+        <option name="underLabel">ms (p95)</option>
+        <option name="unit">ms</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+  </row>
+
+  <!-- Row 2: Geography and Trend -->
+  <row>
+    <panel>
+      <title>Page Load Time by Country</title>
+      <chart>
+        <search>
+          <query>index=cdn sourcetype=cdn:user:experience
+| stats avg(page_load_ms) as avg_page_load by country
+| sort -avg_page_load
+| eval avg_page_load=round(avg_page_load, 0)</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="charting.axisTitleX.text">Avg Page Load (ms)</option>
+        <option name="charting.axisTitleY.text">Country</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>API Latency Trend</title>
+      <chart>
+        <search>
+          <query>index=cdn sourcetype=cdn:user:experience country=$country_filter$
+| timechart span=30m avg(api_latency_ms) as avg_api perc95(api_latency_ms) as p95_api</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">API Latency (ms)</option>
+      </chart>
+    </panel>
+  </row>
+
+  <!-- Row 3: Video and POP Performance -->
+  <row>
+    <panel>
+      <title>Video Buffering Events Over Time</title>
+      <chart>
+        <search>
+          <query>index=cdn sourcetype=cdn:user:experience country=$country_filter$
+| timechart span=30m sum(video_buffer_events) as buffer_events</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">Buffer Events</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>CDN POP Performance Comparison</title>
+      <chart>
+        <search>
+          <query>index=cdn sourcetype=cdn:user:experience
+| stats avg(page_load_ms) as avg_page_load avg(api_latency_ms) as avg_api by cdn_pop_used
+| eval avg_page_load=round(avg_page_load, 0), avg_api=round(avg_api, 0)
+| sort -avg_page_load</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleX.text">Latency (ms)</option>
+        <option name="charting.axisTitleY.text">CDN POP</option>
+      </chart>
+    </panel>
+  </row>
+
+  <!-- Row 4: ISP and City -->
+  <row>
+    <panel>
+      <title>ISP Performance Comparison</title>
+      <chart>
+        <search>
+          <query>index=cdn sourcetype=cdn:user:experience country=$country_filter$
+| stats avg(page_load_ms) as avg_page_load avg(api_latency_ms) as avg_api count by isp
+| sort -avg_page_load
+| eval avg_page_load=round(avg_page_load, 0), avg_api=round(avg_api, 0)</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleX.text">Avg Latency (ms)</option>
+        <option name="charting.axisTitleY.text">ISP</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>City-Level Performance</title>
+      <table>
+        <search>
+          <query>index=cdn sourcetype=cdn:user:experience country=$country_filter$
+| stats avg(page_load_ms) as avg_page_load avg(api_latency_ms) as avg_api sum(video_buffer_events) as buffer_events count by city country isp
+| eval avg_page_load=round(avg_page_load, 0), avg_api=round(avg_api, 0)
+| sort -avg_page_load
+| rename avg_page_load as "Avg Page Load (ms)" avg_api as "Avg API Latency (ms)" buffer_events as "Buffer Events" count as "Sessions"</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">15</option>
+      </table>
+    </panel>
+  </row>
+
+  <!-- Row 5: Page Load Trend and Correlation -->
+  <row>
+    <panel>
+      <title>Page Load Time by POP Over Time</title>
+      <chart>
+        <search>
+          <query>index=cdn sourcetype=cdn:user:experience
+| timechart span=30m avg(page_load_ms) by cdn_pop_used</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">Page Load (ms)</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Experience vs Edge Cache Correlation</title>
+      <chart>
+        <search>
+          <query>index=cdn sourcetype=cdn:edge:access
+| timechart span=1h count(eval(cache_status="HIT")) as hits count as total
+| eval cache_hit_pct=round(hits/total*100, 1)
+| fields _time cache_hit_pct
+| join type=outer _time
+  [search index=cdn sourcetype=cdn:user:experience
+   | timechart span=1h avg(page_load_ms) as avg_page_load]</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">Value</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.chart.overlayFields">avg_page_load</option>
+        <option name="charting.axisTitleY2.text">Page Load (ms)</option>
+      </chart>
+    </panel>
+  </row>
+</dashboard>

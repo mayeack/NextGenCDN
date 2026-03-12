@@ -1,0 +1,27 @@
+[]
+access = read : [ * ], write : [ admin ]
+export = system
+
+[props]
+access = read : [ * ], write : [ admin ]
+export = system
+
+[transforms]
+access = read : [ * ], write : [ admin ]
+export = system
+
+[indexes]
+access = read : [ * ], write : [ admin ]
+export = system
+
+[lookups]
+access = read : [ * ], write : [ admin ]
+export = system
+
+[views]
+access = read : [ * ], write : [ admin ]
+export = system
+
+[nav]
+access = read : [ * ], write : [ admin ]
+export = system

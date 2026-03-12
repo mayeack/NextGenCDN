@@ -1,0 +1,5 @@
+<nav>
+  <view name="cdn_operations_dashboard" default="true" />
+  <view name="cdn_security_dashboard" />
+  <view name="cdn_experience_dashboard" />
+</nav>

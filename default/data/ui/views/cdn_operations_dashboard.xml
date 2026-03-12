@@ -1,0 +1,255 @@
+<dashboard version="1.1">
+  <label>CDN Operations Dashboard</label>
+  <description>Operational health of CDN infrastructure: edge volume, cache efficiency, origin latency, and resource utilization.</description>
+
+  <fieldset submitButton="false">
+    <input type="time" token="time_range" searchWhenChanged="true">
+      <label>Time Range</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="selected_pop" searchWhenChanged="true">
+      <label>POP Filter</label>
+      <choice value="*">All POPs</choice>
+      <default>*</default>
+      <search>
+        <query>index=cdn sourcetype=cdn:edge:access | stats count by pop | sort -count</query>
+        <earliest>$time_range.earliest$</earliest>
+        <latest>$time_range.latest$</latest>
+      </search>
+      <fieldForLabel>pop</fieldForLabel>
+      <fieldForValue>pop</fieldForValue>
+    </input>
+  </fieldset>
+
+  <!-- Row 1: KPI Summary -->
+  <row>
+    <panel>
+      <title>Total Requests</title>
+      <single>
+        <search>
+          <query>index=cdn sourcetype=cdn:edge:access pop=$selected_pop$
+| stats count as total_requests</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x53a051","0x53a051"]</option>
+        <option name="underLabel">Requests</option>
+        <option name="useColors">0</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Cache Hit Ratio</title>
+      <single>
+        <search>
+          <query>index=cdn sourcetype=cdn:edge:access pop=$selected_pop$
+| stats count(eval(cache_status="HIT")) as hits count as total
+| eval cache_hit_ratio=round(hits/total*100, 1)</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="field">cache_hit_ratio</option>
+        <option name="numberPrecision">0.0</option>
+        <option name="rangeColors">["0xdc4e41","0xf8be34","0x53a051"]</option>
+        <option name="rangeValues">[70,85]</option>
+        <option name="underLabel">% Hit Rate</option>
+        <option name="unit">%</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Avg Response Time</title>
+      <single>
+        <search>
+          <query>index=cdn sourcetype=cdn:edge:access pop=$selected_pop$
+| stats avg(response_time_ms) as avg_rt
+| eval avg_rt=round(avg_rt, 0)</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="field">avg_rt</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[100,300]</option>
+        <option name="underLabel">ms</option>
+        <option name="unit">ms</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Active Edge Nodes</title>
+      <single>
+        <search>
+          <query>index=cdn sourcetype=cdn:edge:metrics
+| stats dc(edge_server_id) as active_nodes</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="numberPrecision">0</option>
+        <option name="underLabel">Nodes</option>
+        <option name="useColors">0</option>
+      </single>
+    </panel>
+  </row>
+
+  <!-- Row 2: Traffic and Cache -->
+  <row>
+    <panel>
+      <title>Edge Request Volume by POP</title>
+      <chart>
+        <search>
+          <query>index=cdn sourcetype=cdn:edge:access pop=$selected_pop$
+| timechart span=30m count by pop</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">Requests</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Cache Hit Ratio Over Time</title>
+      <chart>
+        <search>
+          <query>index=cdn sourcetype=cdn:edge:access pop=$selected_pop$
+| timechart span=30m count(eval(cache_status="HIT")) as hits count as total
+| eval cache_hit_pct=round(hits/total*100, 1)
+| fields _time cache_hit_pct</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">Hit Rate %</option>
+        <option name="charting.axisY.minimumNumber">0</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+      </chart>
+    </panel>
+  </row>
+
+  <!-- Row 3: Latency -->
+  <row>
+    <panel>
+      <title>Top 10 Slowest Edge Locations</title>
+      <chart>
+        <search>
+          <query>index=cdn sourcetype=cdn:edge:access
+| stats avg(response_time_ms) as avg_response_time by edge_location
+| sort -avg_response_time
+| head 10
+| eval avg_response_time=round(avg_response_time, 0)</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="charting.axisTitleX.text">Avg Response Time (ms)</option>
+        <option name="charting.axisTitleY.text">Edge Location</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Origin Latency by Cluster Over Time</title>
+      <chart>
+        <search>
+          <query>index=cdn sourcetype=cdn:origin:performance
+| timechart span=30m avg(origin_latency_ms) by origin_cluster</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">Origin Latency (ms)</option>
+      </chart>
+    </panel>
+  </row>
+
+  <!-- Row 4: Resource Utilization -->
+  <row>
+    <panel>
+      <title>Edge Node CPU Utilization</title>
+      <chart>
+        <search>
+          <query>index=cdn sourcetype=cdn:edge:metrics
+| timechart span=30m avg(cpu_pct) by edge_location</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">CPU %</option>
+        <option name="charting.axisY.minimumNumber">0</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Edge Node Memory Utilization</title>
+      <chart>
+        <search>
+          <query>index=cdn sourcetype=cdn:edge:metrics
+| timechart span=30m avg(memory_pct) by edge_location</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">Memory %</option>
+        <option name="charting.axisY.minimumNumber">0</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+      </chart>
+    </panel>
+  </row>
+
+  <!-- Row 5: Network and Connections -->
+  <row>
+    <panel>
+      <title>Network Throughput (Outbound) by Location</title>
+      <chart>
+        <search>
+          <query>index=cdn sourcetype=cdn:edge:metrics
+| timechart span=30m avg(network_out_mbps) by edge_location</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">Mbps (Out)</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Origin Error Rate by Cluster</title>
+      <chart>
+        <search>
+          <query>index=cdn sourcetype=cdn:origin:performance
+| timechart span=30m sum(origin_errors) by origin_cluster</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">Errors</option>
+      </chart>
+    </panel>
+  </row>
+</dashboard>

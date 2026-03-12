@@ -1,0 +1,16 @@
+edge_location,region,country,capacity_gbps
+LAX,us-west,USA,120
+SFO,us-west,USA,140
+DFW,us-central,USA,100
+IAD,us-east,USA,110
+ORD,us-central,USA,95
+ATL,us-east,USA,105
+FRA,europe,Germany,130
+LHR,europe,UK,125
+CDG,europe,France,115
+AMS,europe,Netherlands,120
+NRT,asia,Japan,135
+SIN,asia,Singapore,150
+HKG,asia,Hong Kong,140
+SYD,oceania,Australia,100
+GRU,south-america,Brazil,90
